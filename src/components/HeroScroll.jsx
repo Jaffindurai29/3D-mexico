@@ -33,7 +33,7 @@ const HeroScroll = () => {
                 setLoadedCount(loaded);
             };
 
-            img.src = `/sequence/ezgif-frame-${paddedIndex}.png`;
+            img.src = `/sequence/ezgif-frame-${paddedIndex}-compressed.png`;
             loadedImages.push(img);
         }
         setImages(loadedImages);
