@@ -12,15 +12,27 @@ const HeroScroll = () => {
     const text2Ref = useRef(null);
     const text3Ref = useRef(null);
     const [images, setImages] = useState([]);
+    const [loadedCount, setLoadedCount] = useState(0);
     const frameCount = 112;
 
     // Preload images
     useEffect(() => {
         const loadedImages = [];
+        let loaded = 0;
         for (let i = 1; i <= frameCount; i++) {
             const img = new Image();
             // ezgif-frame-001.png to ezgif-frame-112.png
             const paddedIndex = i.toString().padStart(3, '0');
+
+            img.onload = () => {
+                loaded++;
+                setLoadedCount(loaded);
+            };
+            img.onerror = () => {
+                loaded++;
+                setLoadedCount(loaded);
+            };
+
             img.src = `/sequence/ezgif-frame-${paddedIndex}.png`;
             loadedImages.push(img);
         }
@@ -28,7 +40,7 @@ const HeroScroll = () => {
     }, []);
 
     useEffect(() => {
-        if (images.length !== frameCount || !canvasRef.current) return;
+        if (loadedCount !== frameCount || images.length !== frameCount || !canvasRef.current) return;
 
         const ctx = canvasRef.current.getContext('2d');
 
@@ -43,13 +55,10 @@ const HeroScroll = () => {
             if (!images[index]) return;
             const img = images[index];
 
-            // Make the image smaller. Math.max for cover, Math.min for contain.
-            // Using a scaling factor to make it smaller than the screen (e.g. 0.6 of screen size)
+            // Using Math.max guarantees the image covers the entire screen (full quality / full screen)
             const hRatio = canvasRef.current.width / img.width;
             const vRatio = canvasRef.current.height / img.height;
-            // Let's use a dynamic ratio that ensures it fits well but isn't overly huge
-            const baseRatio = Math.min(hRatio, vRatio);
-            const ratio = baseRatio * 0.9; // Scale down slightly from "contain" to have breathing room
+            const ratio = Math.max(hRatio, vRatio); // Use Max for COVER!
 
             const centerShift_x = (canvasRef.current.width - img.width * ratio) / 2;
             // Shift Y slightly down to give room for top text, or just perfectly centered
@@ -63,8 +72,8 @@ const HeroScroll = () => {
             );
         };
 
-        // Initialize first frame
-        images[0].onload = () => resizeCanvas();
+        // Initialize first frame immediately
+        resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
         // Setup GSAP Animation
@@ -110,10 +119,29 @@ const HeroScroll = () => {
             window.removeEventListener('resize', resizeCanvas);
             ScrollTrigger.getAll().forEach(t => t.kill());
         };
-    }, [images]);
+    }, [images, loadedCount]);
+
+    const isLoading = loadedCount < frameCount;
+    const progress = Math.round((loadedCount / frameCount) * 100);
 
     return (
         <section ref={containerRef} className="relative w-full h-screen bg-luxury-dark overflow-hidden">
+            {/* Loading Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-luxury-dark text-white">
+                    <h2 className="text-3xl md:text-5xl font-serif mb-6 text-luxury-gold tracking-widest uppercase drop-shadow-lg text-center px-4">Loading El Refugio</h2>
+                    <div className="w-64 md:w-96 h-1 bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-luxury-gold transition-all duration-300 ease-out"
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
+                    <p className="mt-4 font-sans text-sm text-luxury-gold-light opacity-80 tracking-widest">
+                        {progress}%
+                    </p>
+                </div>
+            )}
+
             {/* Canvas for 3D Sequence rendering */}
             <canvas
                 ref={canvasRef}
